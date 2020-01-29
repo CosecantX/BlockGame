@@ -49,29 +49,29 @@ Scene1.init = function () {
         this.RAILS[i] = i * this.BLOCK_WIDTH + this.HALF_BLOCK_WIDTH + this.BOUNDS.x;
     }
     this.DROP_POS = [{
-            x: this.RAILS[6],
-            y: this.BOUNDS.y
-        },
-        {
-            x: this.RAILS[7],
-            y: this.BOUNDS.y
-        },
-        {
-            x: this.RAILS[6],
+            x: this.RAILS[6], // top left
             y: this.BOUNDS.y - this.BLOCK_WIDTH
         },
         {
-            x: this.RAILS[7],
+            x: this.RAILS[7], // top right
             y: this.BOUNDS.y - this.BLOCK_WIDTH
+        },
+        {
+            x: this.RAILS[7], // bottom right
+            y: this.BOUNDS.y
+        },
+        {
+            x: this.RAILS[6], // bottom left
+            y: this.BOUNDS.y
         }
     ]
 
     this.ZONE = [];
-    this.ZONE[0] = this.add.rectangle(this.BOUNDS.x, 0, this.BLOCK_WIDTH + this.HALF_BLOCK_WIDTH, this.HEIGHT, 0xff0000).setOrigin(0, 0);
+    this.ZONE[0] = this.add.rectangle(this.BOUNDS.x, 0, this.BLOCK_WIDTH + this.HALF_BLOCK_WIDTH, this.HEIGHT).setOrigin(0, 0).setStrokeStyle(1, 0xffffff);
     for (let i = 1; i < this.RAILS.length - 2; i++) {
-        this.ZONE[i] = this.add.rectangle(this.RAILS[i], 0, this.BLOCK_WIDTH - 1, this.HEIGHT, 0x00ff00).setOrigin(0, 0);
+        this.ZONE[i] = this.add.rectangle(this.RAILS[i], 0, this.BLOCK_WIDTH, this.HEIGHT).setOrigin(0, 0).setStrokeStyle(1, 0xffffff);
     }
-    this.ZONE[this.RAILS.length - 2] = this.add.rectangle(this.RAILS[this.RAILS.length - 2], 0, this.BLOCK_WIDTH + this.HALF_BLOCK_WIDTH, this.HEIGHT, 0xff0000).setOrigin(0, 0);
+    this.ZONE[this.RAILS.length - 2] = this.add.rectangle(this.RAILS[this.RAILS.length - 2], 0, this.BLOCK_WIDTH + this.HALF_BLOCK_WIDTH, this.HEIGHT).setOrigin(0, 0).setStrokeStyle(1, 0xffffff);
 
     this.cycle = 'gen'; // the game's "stages" for what the update function should do
     this.moveable = true;
@@ -168,6 +168,32 @@ Scene1.init = function () {
             case 4: return 'purple';
         }
     }
+
+    this.rotateCW = function () {
+        let tl, tr, br, bl;
+        this.physBlocks.getChildren().forEach(e => {
+            switch (e.getData('pos')) {
+                case 0 : tl = e; break;
+                case 1 : tr = e; break;
+                case 2 : br = e; break;
+                case 3 : bl = e; break;
+            }
+        })
+        let x = tl.x;
+        let y = tl.y;
+
+        tl.x = tr.x;
+        tl.y = tr.y;
+
+        tr.x = br.x;
+        tr.y = br.y;
+
+        br.x = bl.x;
+        br.y = bl.y;
+
+        bl.x = x;
+        bl.y = y;
+    }
 };
 
 Scene1.preload = function () {
@@ -224,10 +250,10 @@ Scene1.update = function () {
     switch (this.cycle) {
         case 'gen':
             // create 4 blocks in center top
-            this.physBlocks.add(new PhysBlock(this.DROP_POS[1].x, this.DROP_POS[1].y, this.randColor()));
-            this.physBlocks.add(new PhysBlock(this.DROP_POS[2].x, this.DROP_POS[2].y, this.randColor()));
-            this.physBlocks.add(new PhysBlock(this.DROP_POS[3].x, this.DROP_POS[3].y, this.randColor()));
-            this.physBlocks.add(new PhysBlock(this.DROP_POS[0].x, this.DROP_POS[0].y, this.randColor()));
+            this.physBlocks.add(new PhysBlock(this.DROP_POS[0].x, this.DROP_POS[0].y, this.randColor()).setData('pos', 0));
+            this.physBlocks.add(new PhysBlock(this.DROP_POS[1].x, this.DROP_POS[1].y, this.randColor()).setData('pos', 1));
+            this.physBlocks.add(new PhysBlock(this.DROP_POS[2].x, this.DROP_POS[2].y, this.randColor()).setData('pos', 2));
+            this.physBlocks.add(new PhysBlock(this.DROP_POS[3].x, this.DROP_POS[3].y, this.randColor()).setData('pos', 3));
 
             this.cycle = 'drop';
 
@@ -242,6 +268,8 @@ Scene1.update = function () {
 
             // content for single press space key
             if (this.spaceKey.isDown && this.pushonce && this.moveable) {
+
+                this.rotateCW();
 
                 // end single push
                 this.pushonce = false;
