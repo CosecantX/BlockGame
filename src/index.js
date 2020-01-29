@@ -66,6 +66,13 @@ Scene1.init = function () {
         }
     ]
 
+    this.ZONE = [];
+    this.ZONE[0] = this.add.rectangle(this.BOUNDS.x, 0, this.BLOCK_WIDTH + this.HALF_BLOCK_WIDTH, this.HEIGHT, 0xff0000).setOrigin(0, 0);
+    for (let i = 1; i < this.RAILS.length - 2; i++) {
+        this.ZONE[i] = this.add.rectangle(this.RAILS[i], 0, this.BLOCK_WIDTH - 1, this.HEIGHT, 0x00ff00).setOrigin(0, 0);
+    }
+    this.ZONE[this.RAILS.length - 2] = this.add.rectangle(this.RAILS[this.RAILS.length - 2], 0, this.BLOCK_WIDTH + this.HALF_BLOCK_WIDTH, this.HEIGHT, 0xff0000).setOrigin(0, 0);
+
     this.cycle = 'gen'; // the game's "stages" for what the update function should do
     this.moveable = true;
     this.grid = [];
