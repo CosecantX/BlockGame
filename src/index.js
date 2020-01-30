@@ -79,37 +79,45 @@ Scene1.init = function () {
             this.zoneOver = i;
         });
         z.on('pointerdown', () => {
-            this.dropOK = true;
+            if (this.pointer.rightButtonDown()) {
+                this.rotateCWOK = true;
+            } else {
+                this.dropOK = true;
+            }
         });
         z.on('pointerup', () => {
             this.dropOK = false;
+            this.rotateCWOK = false;
+            this.pushonce = true;
         })
     })
 
     this.DROP_POS = [];
-    
+
     for (let i = 0; i < this.ZONE.length; i++) {
         this.DROP_POS[i] = [{
-            x: this.RAILS[i], // top left
-            y: this.BOUNDS.y - this.BLOCK_WIDTH
-        },
-        {
-            x: this.RAILS[i + 1], // top right
-            y: this.BOUNDS.y - this.BLOCK_WIDTH
-        },
-        {
-            x: this.RAILS[i + 1], // bottom right
-            y: this.BOUNDS.y
-        },
-        {
-            x: this.RAILS[i], // bottom left
-            y: this.BOUNDS.y
-        }]
+                x: this.RAILS[i], // top left
+                y: this.BOUNDS.y - this.BLOCK_WIDTH
+            },
+            {
+                x: this.RAILS[i + 1], // top right
+                y: this.BOUNDS.y - this.BLOCK_WIDTH
+            },
+            {
+                x: this.RAILS[i + 1], // bottom right
+                y: this.BOUNDS.y
+            },
+            {
+                x: this.RAILS[i], // bottom left
+                y: this.BOUNDS.y
+            }
+        ]
     }
 
     this.cycle = 'gen'; // the game's "stages" for what the update function should do
     this.zoneOver = 6;
     this.dropOK = false;
+    this.rotateCWOK = false;
     this.moveable = true;
     this.grid = [];
 
@@ -233,15 +241,19 @@ Scene1.init = function () {
 
         tl.x = tr.x;
         tl.y = tr.y;
+        tl.setData('pos', 1);
 
         tr.x = br.x;
         tr.y = br.y;
+        tr.setData('pos', 2);
 
         br.x = bl.x;
         br.y = bl.y;
+        br.setData('pos', 3);
 
         bl.x = x;
         bl.y = y;
+        bl.setData('pos', 0);
     }
 
     this.moveBlocksTo = function (zone) {
@@ -286,12 +298,12 @@ Scene1.preload = function () {
 };
 
 Scene1.create = function () {
-    this.score = 0;
+    /*this.score = 0;
 
     this.scoreText = this.add.text(4, 0, `Score: ${this.score}`, {
         fontSize: '12pt',
         color: '#fff'
-    });
+    });*/
 
     this.physBlocks = this.physics.add.group();
     this.staticBlocks = this.physics.add.staticGroup();
@@ -319,6 +331,7 @@ Scene1.create = function () {
     this.spaceKey = this.input.keyboard.addKey(
         Phaser.Input.Keyboard.KeyCodes.SPACE
     );
+    this.pointer = this.input.activePointer;
     this.pushonce = true;
     this.input.mouse.disableContextMenu();
 };
@@ -341,28 +354,20 @@ Scene1.update = function () {
 
             this.moveBlocksTo(this.zoneOver);
 
-            if (this.dropOK && this.pushonce) {
-                
-                this.cycle = 'drop';
-
+            if (this.rotateCWOK && this.pushonce) {
+                this.rotateCW();
                 this.pushonce = false;
             }
 
-            //this.cycle = 'drop';
+            if (this.dropOK && this.pushonce) {
+                this.cycle = 'drop';
+                this.pushonce = false;
+            }
 
             break;
 
         case 'drop':
-                this.physBlocks.setVelocityY(200);
-
-            // content for single press space key
-            if (this.spaceKey.isDown && this.pushonce) {
-
-                this.rotateCW();
-
-                // end single push
-                this.pushonce = false;
-            }
+            this.physBlocks.setVelocityY(250);
 
             // Check if there are any free blocks left
             if (this.physBlocks.getChildren().length === 0) {
@@ -376,8 +381,7 @@ Scene1.update = function () {
             this.cycle = 'gen';
 
             this.staticBlocks.getChildren().forEach(e => {
-                if (e.y <= this.BOUNDS.y + this.BLOCK_WIDTH &&
-                    (e.x === this.RAILS[6] || e.x === this.RAILS[7])) {
+                if (e.y <= this.BOUNDS.y) {
                     this.cycle = 'gameover'
                 }
             })
@@ -388,10 +392,7 @@ Scene1.update = function () {
 
 
             break;
-
     }
-
-    if (this.spaceKey.isUp) this.pushonce = true;
 };
 
 const config = {
