@@ -37,8 +37,8 @@ Scene1.init = function () {
     this.CENTER_X = this.WIDTH / 2;
     this.CENTER_Y = this.HEIGHT / 2;
     this.BOUNDS = {
-        x: 20,
-        y: 28
+        x: 0,
+        y: 40
     };
     this.GRID_COLS = 14;
     this.GRID_ROWS = 14;
@@ -97,19 +97,19 @@ Scene1.init = function () {
     for (let i = 0; i < this.ZONE.length; i++) {
         this.DROP_POS[i] = [{
                 x: this.RAILS[i], // top left
-                y: this.BOUNDS.y - this.BLOCK_WIDTH
+                y: this.BOUNDS.y - this.BLOCK_WIDTH - this.BLOCK_WIDTH
             },
             {
                 x: this.RAILS[i + 1], // top right
-                y: this.BOUNDS.y - this.BLOCK_WIDTH
+                y: this.BOUNDS.y - this.BLOCK_WIDTH - this.BLOCK_WIDTH
             },
             {
                 x: this.RAILS[i + 1], // bottom right
-                y: this.BOUNDS.y
+                y: this.BOUNDS.y - this.BLOCK_WIDTH
             },
             {
                 x: this.RAILS[i], // bottom left
-                y: this.BOUNDS.y
+                y: this.BOUNDS.y - this.BLOCK_WIDTH
             }
         ]
     }
@@ -286,6 +286,96 @@ Scene1.init = function () {
         bl.x = this.DROP_POS[zone][3].x;
         bl.y = this.DROP_POS[zone][3].y;
     }
+
+    this.isThereRoom = function (zone) {
+        let ok = true;
+        this.staticBlocks.getChildren().forEach(e => {
+            if (e.x === this.DROP_POS[zone][2].x || e.x === this.DROP_POS[zone][3].x) {
+                if (e.y < this.BOUNDS.y + (this.BLOCK_WIDTH * 2)) {
+                    ok = false;
+                }
+            }
+        })
+        return ok;
+    }
+
+    this.findBlocks = function () {
+        let color;
+        let col;
+        let row;
+        let found = false;
+
+        findColor:
+            for (let col2 = this.GRID_WIDTH - 1; col2 >= 0; col2--) { // move along rows from bottom
+                for (let row2 = this.GRID_HEIGHT - 1; row2 >= 0; row2--) {
+                    if (this.grid[row2][col2].getData('marked') === true) {
+                        color = this.grid[row2][col2].getData('color');
+                        col = col2;
+                        row = row2;
+                        found = true;
+                        break findColor;
+                    }
+                }
+            }
+
+        if (found) {
+
+            if (this.grid[row - 1] &&
+                this.grid[row - 1][col] &&
+                this.grid[row - 1][col].getData('color') === color &&
+                !this.grid[row - 1][col].getData('marked') &&
+                !this.grid[row - 1][col].getData('toPop')) {
+
+                this.grid[row - 1][col].setData('marked', true);
+            }
+
+            if (this.grid[row + 1] &&
+                this.grid[row + 1][col] &&
+                this.grid[row + 1][col].getData('color') === color &&
+                !this.grid[row + 1][col].getData('marked') &&
+                !this.grid[row + 1][col].getData('toPop')) {
+
+                this.grid[row + 1][col].setData('marked', true);
+            }
+
+            if (this.grid[row][col + 1] &&
+                this.grid[row][col + 1].getData('color') === color &&
+                !this.grid[row][col + 1].getData('marked') &&
+                !this.grid[row][col + 1].getData('toPop')) {
+
+                this.grid[row][col + 1].setData('marked', true);
+            }
+
+            if (this.grid[row][col - 1] &&
+                this.grid[row][col - 1].getData('color') === color &&
+                !this.grid[row][col - 1].getData('marked') &&
+                !this.grid[row][col - 1].getData('toPop')) {
+
+                this.grid[row][col - 1].setData('marked', true);
+            }
+
+            this.grid[row][col].setData('marked', false);
+            this.grid[row][col].setData('toPop', true);
+            this.findBlocks();
+        }
+    }
+
+  this.popBlocks = function () {
+        let numPopped = 0;
+        for (let col = this.GRID_WIDTH - 1; col >= 0; col--) { // move along rows from bottom
+            for (let row = this.GRID_HEIGHT - 1; row >= 0; row--) {
+                if (this.grid[row][col].getData('toPop') === true) {
+                    numPopped++;
+                    this.grid[row][col].setData('toPop', false)
+                    this.grid[row][col].setTexture(); // remove block upon click
+                    this.grid[row][col].setData('color', 'blank');
+                    this.grid[row][col].removeInteractive();
+                }
+            }
+        }
+        console.log(`number popped: ${numPopped}`);
+        this.score += numPopped * numPopped;
+    }
 };
 
 Scene1.preload = function () {
@@ -295,6 +385,12 @@ Scene1.preload = function () {
     this.load.image('green', 'assets/greenBlock.png');
     this.load.image('purple', 'assets/purpleBlock.png');
     this.load.image('grey', 'assets/greyBlock.png');
+
+    this.load.image('redBomb', 'assets/redBomb.png');
+    this.load.image('blueBomb', 'assets/blueBomb.png');
+    this.load.image('yellowBomb', 'assets/yellowBomb.png');
+    this.load.image('greenBomb', 'assets/greenBomb.png');
+    this.load.image('purpleBomb', 'assets/purpleBomb.png');
 };
 
 Scene1.create = function () {
@@ -360,15 +456,17 @@ Scene1.update = function () {
             }
 
             if (this.dropOK && this.pushonce) {
-                this.cycle = 'drop';
-                this.pushonce = false;
+
+                if (this.isThereRoom(this.zoneOver) === true) {
+                    this.physBlocks.setVelocityY(200);
+                    this.cycle = 'drop';
+                    
+                }this.pushonce = false;
             }
 
             break;
 
         case 'drop':
-            this.physBlocks.setVelocityY(250);
-
             // Check if there are any free blocks left
             if (this.physBlocks.getChildren().length === 0) {
                 this.cycle = 'align';
@@ -398,8 +496,8 @@ Scene1.update = function () {
 const config = {
     type: Phaser.AUTO,
     parent: 'cnv',
-    width: 260,
-    height: 260,
+    width: 224,
+    height: 280,
     pixelArt: true,
     zoom: 3,
     physics: {
